@@ -79,6 +79,21 @@ def spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, at
     df['ATT_FLAG'] = 1
     return df
 
+def replay(df, row, eavesdropped_data, attack_intervals):
+    """
+    Unconstrained replay attack that replays data from the specified interval without constraints.
+    """
+    start_idx = row['Replay_Copy']
+    end_idx = row['Replay_Copy'] + (row['End'] - row['Start'])
+    replay_data = eavesdropped_data.loc[start_idx:end_idx]
+
+    if not replay_data.empty:
+        df = pd.concat([df, replay_data], ignore_index=True)
+    else:
+        print(f"Warning: Replay data from {start_idx} to {end_idx} is empty. Skipping assignment.")
+
+    return df
+
 def constrained_replay(df, row, eavesdropped_data, attack_intervals, *args):
     """
     Constrained version of the replay attack.
@@ -105,6 +120,8 @@ def check_constraints(constraints):
         sys.exit()
 
 if __name__ == "__main__":
+    spoofing_technique = replay if constraints_setting == 'unconstrained' else constrained_replay
+
     if dataset == 'BATADAL':
         list_of_constraints = ['PLC_1', 'PLC_2', 'PLC_3', 'PLC_4', 'PLC_5', 'PLC_6', 'PLC_7', 'PLC_8', 'PLC_9'] if constraints_setting == 'topology' else [2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 35, 40]
     elif dataset == 'WADI':
@@ -133,7 +150,7 @@ if __name__ == "__main__":
                 test_data = parse_datetime_column(test_data, date_column='DATETIME')
                 test_data.set_index('DATETIME', inplace=True)
 
-                spoofed_data = spoof(constrained_replay, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
+                spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
                 output_path = f'./results/BATADAL/{"constrained_PLC/constrained_" + str(i) + "_attack_" + str(att_num) if constraints_setting == "topology" else f"attack_{att_num}_replay_max_{i}"}.csv'
                 spoofed_data.to_csv(output_path)
 
@@ -147,6 +164,6 @@ if __name__ == "__main__":
                 test_data = parse_datetime_column(test_data, date_column='DATETIME')
                 test_data.set_index('DATETIME', inplace=True)
 
-                spoofed_data = spoof(constrained_replay, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
+                spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
                 output_path = f'./results/{dataset}/{"constrained_PLC/constrained_" + str(i) + "_attack_" + str(att_num) if constraints_setting == "topology" else f"attack_{att_num}_replay_max_{i}"}.csv'
                 spoofed_data.to_csv(output_path)
