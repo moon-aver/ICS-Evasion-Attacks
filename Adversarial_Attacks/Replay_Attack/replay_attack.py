@@ -12,51 +12,35 @@ args = parser.parse_args()
 dataset = args.data[0]
 constraints_setting = args.constraint_setting[0]
 
-def parse_datetime_column(df, date_column='DATETIME'):
-    """
-    Converts the specified datetime column to a consistent datetime format.
-    Handles both standard datetime strings and numeric time representations.
-    """
-    def convert_numeric_to_datetime(x):
-        if isinstance(x, (int, float)):
-            return pd.Timestamp("2017-01-01") + pd.to_timedelta(x, unit='h')
-        return pd.NaT
-
-    df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
-    numeric_mask = df[date_column].isna() & df[date_column].astype(str).str.isnumeric()
-    df.loc[numeric_mask, date_column] = df.loc[numeric_mask, date_column].apply(convert_numeric_to_datetime)
-    df[date_column] = df[date_column].ffill().bfill()
-    return df
-
 def identify_attacks(test_data):
     """
-    Identifies attack intervals in test_data and returns a DataFrame summarizing these intervals.
+    Identifies attack intervals in test_data based on integer timestamps in the 'DATETIME' column.
+    Returns a DataFrame summarizing these intervals.
     """
     attacks = test_data.loc[test_data['ATT_FLAG'] == 1]
     if attacks.empty:
         print("Warning: No attacks found in test_data.")
         return pd.DataFrame(columns=['Name', 'Start', 'End', 'Replay_Copy'])
 
-    prev_datetime = attacks.index[0]
-    start = prev_datetime
+    prev_timestamp = attacks.index[0]
+    start = prev_timestamp
     count_attacks = 0
     attack_intervals = pd.DataFrame(columns=['Name', 'Start', 'End', 'Replay_Copy'])
 
     for index, _ in attacks.iterrows():
         if count_attacks == 3:
             count_attacks += 1
-        if (index - prev_datetime > pd.Timedelta("1 day")):
+        # Adjust interval threshold based on integer values instead of timedelta
+        if index - prev_timestamp > 200:  # Example threshold for detecting new intervals
             count_attacks += 1
-            interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_datetime,
-                                      start - (prev_datetime - start) - pd.Timedelta(seconds=200)]],
+            interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_timestamp, start - (prev_timestamp - start) - 200]],
                                     columns=['Name', 'Start', 'End', 'Replay_Copy'])
-            attack_intervals = pd.concat([attack_intervals, interval.dropna()], ignore_index=True)
+            attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
             start = index
-        prev_datetime = index
+        prev_timestamp = index
 
     count_attacks += 1
-    interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_datetime,
-                              start - (prev_datetime - start) - pd.Timedelta(seconds=200)]],
+    interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_timestamp, start - (prev_timestamp - start) - 200]],
                             columns=['Name', 'Start', 'End', 'Replay_Copy'])
     attack_intervals = pd.concat([attack_intervals, interval.dropna()], ignore_index=True)
 
@@ -79,29 +63,14 @@ def spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, at
     df['ATT_FLAG'] = 1
     return df
 
-def replay(df, row, eavesdropped_data, attack_intervals):
-    """
-    Unconstrained replay attack that replays data from the specified interval without constraints.
-    """
-    start_idx = row['Replay_Copy']
-    end_idx = row['Replay_Copy'] + (row['End'] - row['Start'])
-    replay_data = eavesdropped_data.loc[start_idx:end_idx]
-
-    if not replay_data.empty:
-        df = pd.concat([df, replay_data], ignore_index=True)
-    else:
-        print(f"Warning: Replay data from {start_idx} to {end_idx} is empty. Skipping assignment.")
-
-    return df
-
 def constrained_replay(df, row, eavesdropped_data, attack_intervals, *args):
     """
-    Constrained version of the replay attack.
+    Constrained version of the replay attack using integer timestamps.
     """
     constraints = args[0]
     check_constraints(constraints)
 
-    end_idx = row['Replay_Copy'] + (row['End'] - row['Start']) + pd.Timedelta("1 second")
+    end_idx = row['Replay_Copy'] + (row['End'] - row['Start']) + 1  # Add 1 for inclusive range
     for constraint in constraints:
         if constraint not in eavesdropped_data.columns:
             print(f"Warning: Constraint '{constraint}' not in eavesdropped data columns.")
@@ -120,8 +89,6 @@ def check_constraints(constraints):
         sys.exit()
 
 if __name__ == "__main__":
-    spoofing_technique = replay if constraints_setting == 'unconstrained' else constrained_replay
-
     if dataset == 'BATADAL':
         list_of_constraints = ['PLC_1', 'PLC_2', 'PLC_3', 'PLC_4', 'PLC_5', 'PLC_6', 'PLC_7', 'PLC_8', 'PLC_9'] if constraints_setting == 'topology' else [2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 35, 40]
     elif dataset == 'WADI':
@@ -130,12 +97,10 @@ if __name__ == "__main__":
     data_folder = f'../../Data/{dataset}'
     for i in list_of_constraints:
         test_data = pd.read_csv(f'{data_folder}/test_dataset_1.csv').drop(columns=['Unnamed: 0'], axis=1)
-        test_data = parse_datetime_column(test_data, date_column='DATETIME')
-        test_data.set_index('DATETIME', inplace=True)
+        test_data.set_index('DATETIME', inplace=True)  # Ensure 'DATETIME' is integer-based index
 
         eavesdropped_data = pd.read_csv(f'{data_folder}/test_dataset_1.csv').drop(columns=['Unnamed: 0'], axis=1)
-        eavesdropped_data = parse_datetime_column(eavesdropped_data, date_column='DATETIME')
-        eavesdropped_data.set_index('DATETIME', inplace=True)
+        eavesdropped_data.set_index('DATETIME', inplace=True)  # Ensure 'DATETIME' is integer-based index
 
         constraints = []
         attack_intervals = identify_attacks(test_data)
@@ -147,10 +112,9 @@ if __name__ == "__main__":
                 constraints.append(dictionary[i])
 
                 test_data = pd.read_csv(f'../../Data/BATADAL/attack_{att_num}_from_test_dataset.csv').drop(columns=['Unnamed: 0'], axis=1)
-                test_data = parse_datetime_column(test_data, date_column='DATETIME')
                 test_data.set_index('DATETIME', inplace=True)
 
-                spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
+                spoofed_data = spoof(constrained_replay, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
                 output_path = f'./results/BATADAL/{"constrained_PLC/constrained_" + str(i) + "_attack_" + str(att_num) if constraints_setting == "topology" else f"attack_{att_num}_replay_max_{i}"}.csv'
                 spoofed_data.to_csv(output_path)
 
@@ -161,9 +125,8 @@ if __name__ == "__main__":
                 constraints.append(dictionary[i])
 
                 test_data = pd.read_csv(f'../../Data/{dataset}/attack_{att_num}_from_test_dataset.csv')
-                test_data = parse_datetime_column(test_data, date_column='DATETIME')
                 test_data.set_index('DATETIME', inplace=True)
 
-                spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
+                spoofed_data = spoof(constrained_replay, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
                 output_path = f'./results/{dataset}/{"constrained_PLC/constrained_" + str(i) + "_attack_" + str(att_num) if constraints_setting == "topology" else f"attack_{att_num}_replay_max_{i}"}.csv'
                 spoofed_data.to_csv(output_path)
