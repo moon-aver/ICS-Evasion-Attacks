@@ -31,14 +31,14 @@ def identify_attacks(test_data):
             count_attacks = count_attacks + 1
             interval = pd.DataFrame([['attack_'+str(count_attacks), start, prev_datetime, (start - (prev_datetime - start)) - 200]]
                                     , columns=['Name', 'Start', 'End', 'Replay_Copy'], index = [count_attacks])
-            attack_intervals = attack_intervals.append(interval)
+            attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
             start = index
         prev_datetime = index
     count_attacks = count_attacks + 1
     interval = pd.DataFrame([['attack_'+str(count_attacks), start, prev_datetime, start - (
         prev_datetime - start) - 200]]
                             , columns=['Name', 'Start', 'End', 'Replay_Copy'], index = [count_attacks])
-    attack_intervals = attack_intervals.append(interval)
+    attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
 
     print('_________________________________ATTACK INTERVALS___________________________________\n')
     print(attack_intervals)
