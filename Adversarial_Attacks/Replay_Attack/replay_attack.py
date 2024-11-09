@@ -151,22 +151,22 @@ if __name__ == "__main__":
 
     for i in list_of_constraints:
         if dataset == 'BATADAL':
-            test_data = pd.read_csv(data_folder + '/test_dataset_1.csv').drop(columns=['Unnamed: 0'], axis=1)
-            test_data = pd.to_datetime(test_data['DATETIME'], errors='coerce', format='%Y-%m-%d %H:%M:%S')
-            test_data = test_data.set_index('DATETIME', inplace=True)
+            test_data = pd.read_csv(data_folder + '/test_dataset_1.csv', parse_dates=['DATETIME']).drop(columns=['Unnamed: 0'], axis=1)
+            test_data = parse_datetime_column(test_data)
+            test_data.set_index('DATETIME', inplace=True)
 
-            eavesdropped_data = pd.read_csv(data_folder + "/test_dataset_1.csv").drop(columns=['Unnamed: 0'], axis=1)
-            eavesdropped_data = pd.to_datetime(eavesdropped_data['DATETIME'], errors='coerce', format='%Y-%m-%d %H:%M:%S')
-            eavesdropped_data = eavesdropped_data.set_index('DATETIME', inplace=True)
+            eavesdropped_data = pd.read_csv(data_folder + "/test_dataset_1.csv", parse_dates=['DATETIME']).drop(columns=['Unnamed: 0'], axis=1)
+            eavesdropped_data = parse_datetime_column(eavesdropped_data)
+            eavesdropped_data.set_index('DATETIME', inplace=True)
 
         if dataset == 'WADI':
-            test_data = pd.read_csv(data_folder + '/attacks_october_clean_with_label.csv')
-            test_data = pd.to_datetime(test_data['DATETIME'], errors='coerce', format='%Y-%m-%d %H:%M:%S')
-            test_data = test_data.set_index('DATETIME', inplace=True)
+            test_data = pd.read_csv(data_folder + '/attacks_october_clean_with_label.csv', parse_dates=['DATETIME'])
+            test_data = parse_datetime_column(test_data)
+            test_data.set_index('DATETIME', inplace=True)
 
-            eavesdropped_data = pd.read_csv(data_folder + "/train_dataset.csv")
-            eavesdropped_data = pd.to_datetime(eavesdropped_data['DATETIME'], errors='coerce', format='%Y-%m-%d %H:%M:%S')
-            eavesdropped_data = eavesdropped_data.set_index('DATETIME', inplace=True)
+            eavesdropped_data = pd.read_csv(data_folder + "/train_dataset.csv", parse_dates=['DATETIME'])
+            eavesdropped_data = parse_datetime_column(eavesdropped_data)
+            eavesdropped_data.set_index('DATETIME', inplace=True)
 
         constraints = []
         actuator_columns = eavesdropped_data.filter(regex=("STATUS")).columns.tolist()
@@ -186,11 +186,10 @@ if __name__ == "__main__":
                 print('ATT Num:', att_num)
                 test_data = pd.read_csv(
                     '../../Data/BATADAL/attack_' + str(att_num) + '_from_test_dataset.csv', 
-                    index_col=['DATETIME'], 
-                    parse_dates=['DATETIME'], 
-                    date_parser=lambda x: pd.to_datetime(x, errors='coerce', format='%Y-%m-%d %H:%M:%S')
+                    parse_dates=['DATETIME']
                 ).drop(columns=['Unnamed: 0'], axis=1)
-
+                test_data = parse_datetime_column(test_data)
+                
                 spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
                 output_path = './results/BATADAL/attack_' + str(att_num) + '_replay_max_' + str(i) + '.csv'
                 if constraints_setting == 'topology':
@@ -210,9 +209,10 @@ if __name__ == "__main__":
                 print('ATT Num:', att_num)
                 test_data = pd.read_csv(
                     '../../Data/' + dataset + '/attack_' + str(att_num) + '_from_test_dataset.csv',
-                    index_col=['DATETIME'],
-                    parse_dates=True
+                    parse_dates=['DATETIME']
                 )
+                test_data = parse_datetime_column(test_data)
+
                 spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
 
                 output_path = './results/' + dataset + '/attack_' + str(att_num) + '_replay_max_' + str(i) + '.csv'
