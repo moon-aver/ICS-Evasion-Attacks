@@ -3,25 +3,32 @@ import numpy as np
 
 pd.set_option('display.max_columns', 500)
 
-import pandas as pd
-import numpy as np
-
-pd.set_option('display.max_columns', 500)
-
 def parse_datetime_column(df, date_column='DATETIME'):
     def convert_numeric_to_datetime(x):
         if isinstance(x, (int, float)):
             return pd.Timestamp("2017-01-01") + pd.to_timedelta(x, unit='h')
         return pd.NaT
 
+    # Convert datetime strings
     df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
+
+    # Handle numeric values
     numeric_mask = df[date_column].isna() & df[date_column].astype(str).str.isnumeric()
     df.loc[numeric_mask, date_column] = df.loc[numeric_mask, date_column].apply(convert_numeric_to_datetime)
+
+    # Fill NaT values with nearest valid dates
     df[date_column] = df[date_column].ffill().bfill()
     return df
 
 def identify_attacks(test_data):
+    """
+    Identifies attack intervals in test_data and returns a DataFrame summarizing these intervals.
+    """
     attacks = test_data.loc[test_data['ATT_FLAG'] == 1]
+    if attacks.empty:
+        print("Warning: No attacks found in test_data.")
+        return pd.DataFrame(columns=['Name', 'Start', 'End', 'Replay_Copy'])
+
     prev_datetime = attacks.index[0]
     start = prev_datetime
     count_attacks = 0
@@ -54,11 +61,11 @@ def spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, at
     """
     Applies a spoofing technique to the test_data based on attack intervals and returns spoofed data.
     """
-    df2 = pd.DataFrame()
-    if dataset == 'WADI':
-        row = attack_intervals.iloc[att_num - 1 if att_num < 5 else att_num - 2]
-    elif dataset == 'BATADAL':
-        row = attack_intervals.iloc[att_num - 1 if att_num < 8 else att_num - 8]
+    if att_num > len(attack_intervals):
+        print(f"Warning: Attack number {att_num} is out of bounds for available intervals.")
+        return test_data
+
+    row = attack_intervals.iloc[att_num - 1]
     df = pd.DataFrame(columns=test_data.columns)
     df = spoofing_technique(df, row, eavesdropped_data, attack_intervals, constraints)
     df['ATT_FLAG'] = 1
@@ -72,19 +79,21 @@ def replay(df, row, eavesdropped_data, attack_intervals, *args):
     return df
 
 def constrained_replay(df, row, eavesdropped_data, attack_intervals, *args):
+    """
+    Constrained version of the replay attack.
+    """
     constraints = args[0]
     check_constraints(constraints)
 
-    # Check if range exists in eavesdropped_data
+    # Calculate replay range and check its existence in eavesdropped_data
     end_idx = row['Replay_Copy'] + (row['End'] - row['Start']) + pd.Timedelta("1 second")
     replay_range = eavesdropped_data[constraints[0]].loc[row['Replay_Copy']:end_idx]
 
-    # Ensure range is non-empty before assignment
     if not replay_range.empty:
-        test_data[constraints[0]] = replay_range.values
+        df[constraints[0]] = replay_range.values
     else:
         print(f"Warning: Replay range from {row['Replay_Copy']} to {end_idx} is empty for constraint {constraints[0]}. Skipping assignment.")
-    return test_data
+    return df
 
 def check_constraints(constraints):
     if constraints is None:
@@ -92,11 +101,6 @@ def check_constraints(constraints):
         import sys
         sys.exit()
         
-import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument('-d', '--data', nargs='+', type=str, default=['BATADAL'])
-parser.add_argument('-c', '--constraint_setting', nargs='+', type=str, default=['best'])
-
 args = parser.parse_args()
 dataset = args.data[0]
 constraints_setting = args.constraint_setting[0]
