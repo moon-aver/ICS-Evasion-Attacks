@@ -67,19 +67,23 @@ def constrained_replay(df, row, eavesdropped_data, attack_intervals, constraints
     """
     Constrained version of the replay attack using integer timestamps.
     """
-    # Flatten constraints to ensure it's a simple list of individual constraint names
-    if isinstance(constraints, list) and any(isinstance(c, list) for c in constraints):
+    # Ensure constraints is a flat list of strings
+    if any(isinstance(c, list) for c in constraints):
         constraints = [item for sublist in constraints for item in sublist]
-    
+
     check_constraints(constraints)
-    end_idx = row['Replay_Copy'] + (row['End'] - row['Start']) + 1  # Adjust for inclusive range
+    end_idx = int(row['Replay_Copy']) + int(row['End'] - row['Start']) + 1  # Adjust for inclusive range
 
     for constraint in constraints:
+        if isinstance(constraint, list):  # Check for any residual nested lists
+            print(f"Error: Constraint '{constraint}' is unexpectedly a list. Flattening may be incomplete.")
+            continue
+
         if constraint not in eavesdropped_data.columns:
             print(f"Warning: Constraint '{constraint}' not in eavesdropped data columns.")
             continue
-        
-        replay_range = eavesdropped_data[constraint].loc[row['Replay_Copy']:end_idx]
+
+        replay_range = eavesdropped_data[constraint].iloc[int(row['Replay_Copy']):end_idx]
         if not replay_range.empty:
             df[constraint] = replay_range.values
         else:
