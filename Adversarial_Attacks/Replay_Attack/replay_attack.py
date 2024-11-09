@@ -1,7 +1,18 @@
 import pandas as pd
 import numpy as np
+import argparse
 
 pd.set_option('display.max_columns', 500)
+
+# Define argument parser
+parser = argparse.ArgumentParser()
+parser.add_argument('-d', '--data', nargs='+', type=str, default=['BATADAL'])
+parser.add_argument('-c', '--constraint_setting', nargs='+', type=str, default=['best'])
+
+# Parse arguments
+args = parser.parse_args()
+dataset = args.data[0]
+constraints_setting = args.constraint_setting[0]
 
 def parse_datetime_column(df, date_column='DATETIME'):
     def convert_numeric_to_datetime(x):
@@ -9,21 +20,13 @@ def parse_datetime_column(df, date_column='DATETIME'):
             return pd.Timestamp("2017-01-01") + pd.to_timedelta(x, unit='h')
         return pd.NaT
 
-    # Convert datetime strings
     df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
-
-    # Handle numeric values
     numeric_mask = df[date_column].isna() & df[date_column].astype(str).str.isnumeric()
     df.loc[numeric_mask, date_column] = df.loc[numeric_mask, date_column].apply(convert_numeric_to_datetime)
-
-    # Fill NaT values with nearest valid dates
     df[date_column] = df[date_column].ffill().bfill()
     return df
 
 def identify_attacks(test_data):
-    """
-    Identifies attack intervals in test_data and returns a DataFrame summarizing these intervals.
-    """
     attacks = test_data.loc[test_data['ATT_FLAG'] == 1]
     if attacks.empty:
         print("Warning: No attacks found in test_data.")
@@ -58,9 +61,6 @@ def identify_attacks(test_data):
     return attack_intervals
 
 def spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints=None):
-    """
-    Applies a spoofing technique to the test_data based on attack intervals and returns spoofed data.
-    """
     if att_num > len(attack_intervals):
         print(f"Warning: Attack number {att_num} is out of bounds for available intervals.")
         return test_data
@@ -79,13 +79,9 @@ def replay(df, row, eavesdropped_data, attack_intervals, *args):
     return df
 
 def constrained_replay(df, row, eavesdropped_data, attack_intervals, *args):
-    """
-    Constrained version of the replay attack.
-    """
     constraints = args[0]
     check_constraints(constraints)
 
-    # Calculate replay range and check its existence in eavesdropped_data
     end_idx = row['Replay_Copy'] + (row['End'] - row['Start']) + pd.Timedelta("1 second")
     replay_range = eavesdropped_data[constraints[0]].loc[row['Replay_Copy']:end_idx]
 
