@@ -63,18 +63,22 @@ def spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, at
     df['ATT_FLAG'] = 1
     return df
 
-def constrained_replay(df, row, eavesdropped_data, attack_intervals, *args):
+def constrained_replay(df, row, eavesdropped_data, attack_intervals, constraints):
     """
     Constrained version of the replay attack using integer timestamps.
     """
-    constraints = args[0]
+    # Flatten constraints to ensure it's a simple list of individual constraint names
+    if isinstance(constraints, list) and any(isinstance(c, list) for c in constraints):
+        constraints = [item for sublist in constraints for item in sublist]
+    
     check_constraints(constraints)
+    end_idx = row['Replay_Copy'] + (row['End'] - row['Start']) + 1  # Adjust for inclusive range
 
-    end_idx = row['Replay_Copy'] + (row['End'] - row['Start']) + 1  # Add 1 for inclusive range
     for constraint in constraints:
         if constraint not in eavesdropped_data.columns:
             print(f"Warning: Constraint '{constraint}' not in eavesdropped data columns.")
             continue
+        
         replay_range = eavesdropped_data[constraint].loc[row['Replay_Copy']:end_idx]
         if not replay_range.empty:
             df[constraint] = replay_range.values
