@@ -21,27 +21,27 @@ def identify_attacks(test_data):
         print("Warning: No attacks found in test_data.")
         return pd.DataFrame(columns=['Name', 'Start', 'End', 'Replay_Copy'])
 
-    prev_datetime = attacks.index[0]
-    start = prev_datetime
+    prev_timestamp = attacks.index[0]
+    start = prev_timestamp
     count_attacks = 0
     attack_intervals = pd.DataFrame(columns=['Name', 'Start', 'End', 'Replay_Copy'])
 
     for index, _ in attacks.iterrows():
         if count_attacks == 3:
             count_attacks += 1
-        if (index - prev_datetime > pd.Timedelta("1 day")):
+        if (index - prev_timestamp) > 24:  # Use 24 as the numeric threshold (e.g., 24 hours if in hours)
             count_attacks += 1
-            interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_datetime,
-                                      start - (prev_datetime - start) - pd.Timedelta(seconds=200)]],
+            interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_timestamp,
+                                      start - (prev_timestamp - start) - 200]],
                                     columns=['Name', 'Start', 'End', 'Replay_Copy'])
-            if not interval.empty:  # Avoid adding empty intervals
+            if not interval.empty:
                 attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
             start = index
-        prev_datetime = index
+        prev_timestamp = index
 
     count_attacks += 1
-    interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_datetime,
-                              start - (prev_datetime - start) - pd.Timedelta(seconds=200)]],
+    interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_timestamp,
+                              start - (prev_timestamp - start) - 200]],
                             columns=['Name', 'Start', 'End', 'Replay_Copy'])
     if not interval.empty:
         attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
