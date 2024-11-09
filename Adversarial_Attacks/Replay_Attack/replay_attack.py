@@ -156,28 +156,24 @@ if __name__ == "__main__":
         spoofing_technique = constrained_replay
         attack_intervals = identify_attacks(test_data)
 
+        for i in list_of_constraints:
         if dataset == 'BATADAL': 
             for att_num in [1,2,3,4,5,6,7]: 
                 if constraints_setting == 'topology':
                     s = open('../Black_Box_Attack/constraints/'+dataset+'/constraint_PLC.txt', 'r').read()
                 else:
                     s = open('../Whitebox_Attack/constraints/'+dataset+'/constraint_variables_attack_'+str(att_num)+'.txt', 'r').read()
-                dictionary =  eval(s)
+                
+                dictionary = eval(s)  # Assuming 's' contains a valid Python dictionary
                 print(dictionary)
-                constraints.append(dictionary[i])
+                
+                # Make sure i exists in dictionary
+                if i in dictionary:
+                    constraints.append(dictionary[i])
+                else:
+                    print(f"Warning: {i} not found in the dictionary.")
                 
                 print(constraints)
-
-                print('ATT Num: '+str(att_num))
-                test_data =  pd.read_csv('../../Data/BATADAL/attack_'+str(att_num)+'_from_test_dataset.csv', index_col=['DATETIME'], parse_dates=True)
-                test_data = test_data.drop(columns=['Unnamed: 0'], axis=1)
-                spoofed_data = spoof(spoofing_technique, attack_intervals,
-                                    eavesdropped_data, test_data, att_num, constraints )
-                if constraints_setting == 'topology':
-                    spoofed_data.to_csv('./results/BATADAL/constrained_PLC/constrained_'+str(i)+'_attack_'+str(att_num)+'.csv')
-                else:
-                    spoofed_data.to_csv('./results/BATADAL/attack_'+str(att_num)+'_replay_max_'+str(i)+'.csv')
-                
             test_data = pd.read_csv('../../Data/BATADAL/test_dataset_2.csv')#, parse_dates=True)  # , dayfirst=True)
             eavesdropped_data = pd.read_csv("../../Data/BATADAL/test_dataset_2.csv")#, parse_dates=True)  # ,  dayfirst=True)
             
