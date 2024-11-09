@@ -3,6 +3,31 @@ import numpy as np
 import datetime
 pd.set_option('display.max_columns', 500)
 
+def parse_datetime_column(df, date_column='DATETIME'):
+    """
+    Attempts to parse the specified datetime column to ensure consistency in date format.
+    Converts inconsistent formats to '%Y-%m-%d %H:%M:%S' format.
+    
+    Parameters
+    ----------
+    df : DataFrame
+        DataFrame containing the column to parse
+    date_column : str
+        Name of the column containing datetime information
+
+    Returns
+    -------
+    DataFrame
+        DataFrame with parsed datetime column
+    """
+    # Attempt to convert, handle errors with 'coerce' to set problematic values as NaT
+    df[date_column] = pd.to_datetime(df[date_column], errors='coerce', format='%Y-%m-%d %H:%M:%S')
+    
+    # Fill any remaining NaT values by inferring format or filling forward/backward if possible
+    df[date_column] = df[date_column].fillna(method='ffill').fillna(method='bfill')
+    
+    return df
+
 def identify_attacks(test_data):
     """
     Given the test_data identifies the attack intervals and creates a pandas DataFrame where those spoofing is going to be applied.
@@ -126,14 +151,24 @@ if __name__ == "__main__":
 
     for i in list_of_constraints:
         if dataset == 'BATADAL':
+            # 데이터 파일 불러오기 및 DATETIME 열 파싱
             test_data = pd.read_csv(data_folder + '/test_dataset_1.csv').drop(columns=['Unnamed: 0'], axis=1)
+            test_data = parse_datetime_column(test_data)
+            test_data.set_index('DATETIME', inplace=True)
+
             eavesdropped_data = pd.read_csv(data_folder + "/test_dataset_1.csv").drop(columns=['Unnamed: 0'], axis=1)
+            eavesdropped_data = parse_datetime_column(eavesdropped_data)
+            eavesdropped_data.set_index('DATETIME', inplace=True)
         if dataset == 'WADI':
             test_data = pd.read_csv(data_folder + '/attacks_october_clean_with_label.csv')
+            test_data = parse_datetime_column(test_data)
+            test_data.set_index('DATETIME', inplace=True)
+
             eavesdropped_data = pd.read_csv(data_folder + "/train_dataset.csv")
+            eavesdropped_data = parse_datetime_column(eavesdropped_data)
+            eavesdropped_data.set_index('DATETIME', inplace=True)
 
         constraints = []
-
         actuator_columns = eavesdropped_data.filter(regex=("STATUS")).columns.tolist()
 
         spoofing_technique = constrained_replay
@@ -149,23 +184,23 @@ if __name__ == "__main__":
                 constraints.append(dictionary[i])
                 
                 print('ATT Num:', att_num)
-                # DATETIME 열이 'YYYY-MM-DD HH:MM:SS' 형식일 경우
                 test_data = pd.read_csv(
                     '../../Data/BATADAL/attack_' + str(att_num) + '_from_test_dataset.csv', 
                     index_col=['DATETIME'], 
                     parse_dates=['DATETIME'], 
-                    date_parser=lambda x: pd.to_datetime(x, format='%Y-%m-%d %H:%M:%S')  # 날짜 형식을 명확히 지정
+                    date_parser=lambda x: pd.to_datetime(x, errors='coerce', format='%Y-%m-%d %H:%M:%S')
                 ).drop(columns=['Unnamed: 0'], axis=1)
 
+                test_data = parse_datetime_column(test_data)
+                
                 spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
                 output_path = './results/BATADAL/attack_' + str(att_num) + '_replay_max_' + str(i) + '.csv'
                 if constraints_setting == 'topology':
                     output_path = './results/BATADAL/constrained_PLC/constrained_' + str(i) + '_attack_' + str(att_num) + '.csv'
                 spoofed_data.to_csv(output_path)
         
-        # The following part continues for WADI and additional BATADAL attacks
         if dataset == 'WADI':
-            for att_num in [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]:  # WADI에서 사용할 공격 번호 범위
+            for att_num in [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]:
                 if constraints_setting == 'topology':
                     s = open('../Black_Box_Attack/constraints/' + dataset + '/constraint_PLC.txt', 'r').read()
                 else:
@@ -175,9 +210,13 @@ if __name__ == "__main__":
                 constraints.append(dictionary[i])
 
                 print('ATT Num:', att_num)
-                test_data = pd.read_csv('../../Data/' + dataset + '/attack_' + str(att_num) + '_from_test_dataset.csv', index_col=['DATETIME'], parse_dates=True)
-                
-                # WADI 데이터셋의 경우 Unnamed 열이 없으므로 drop 필요 없음
+                test_data = pd.read_csv(
+                    '../../Data/' + dataset + '/attack_' + str(att_num) + '_from_test_dataset.csv',
+                    index_col=['DATETIME'],
+                    parse_dates=True
+                )
+                test_data = parse_datetime_column(test_data)
+
                 spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
 
                 output_path = './results/' + dataset + '/attack_' + str(att_num) + '_replay_max_' + str(i) + '.csv'
