@@ -26,13 +26,13 @@ def identify_attacks(test_data):
         if (index - prev_datetime > 1):
             count_attacks += 1
             interval = pd.DataFrame([['attack_' + str(count_attacks), start, prev_datetime, (start - (prev_datetime - start)) - 200]],
-                                    columns=['Name', 'Start', 'End', 'Replay_Copy'], index=[count_attacks])
+                                    columns=['Name', 'Start', 'End', 'Replay_Copy'])
             attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
             start = index
         prev_datetime = index
     count_attacks += 1
     interval = pd.DataFrame([['attack_' + str(count_attacks), start, prev_datetime, start - (prev_datetime - start) - 200]],
-                            columns=['Name', 'Start', 'End', 'Replay_Copy'], index=[count_attacks])
+                            columns=['Name', 'Start', 'End', 'Replay_Copy'])
     attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
 
     print('_________________________________ATTACK INTERVALS___________________________________\n')
@@ -157,3 +157,24 @@ if __name__ == "__main__":
                 spoofed_data.to_csv(output_path)
         
         # The following part continues for WADI and additional BATADAL attacks
+        if dataset == 'WADI':
+            for att_num in [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]:  # WADI에서 사용할 공격 번호 범위
+                if constraints_setting == 'topology':
+                    s = open('../Black_Box_Attack/constraints/' + dataset + '/constraint_PLC.txt', 'r').read()
+                else:
+                    s = open('../Whitebox_Attack/constraints/' + dataset + '/constraint_variables_attack_' + str(att_num) + '.txt', 'r').read()
+                
+                dictionary = eval(s)
+                constraints.append(dictionary[i])
+
+                print('ATT Num:', att_num)
+                test_data = pd.read_csv('../../Data/' + dataset + '/attack_' + str(att_num) + '_from_test_dataset.csv', index_col=['DATETIME'], parse_dates=True)
+                
+                # WADI 데이터셋의 경우 Unnamed 열이 없으므로 drop 필요 없음
+                spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
+
+                output_path = './results/' + dataset + '/attack_' + str(att_num) + '_replay_max_' + str(i) + '.csv'
+                if constraints_setting == 'topology':
+                    output_path = './results/' + dataset + '/constrained_PLC/constrained_' + str(i) + '_attack_' + str(att_num) + '.csv'
+                
+                spoofed_data.to_csv(output_path)
