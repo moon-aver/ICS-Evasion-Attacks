@@ -27,7 +27,7 @@ def identify_attacks(test_data):
             count_attacks = count_attacks + 1
         if (index - prev_datetime > 1):
             count_attacks = count_attacks + 1
-            interval = pd.DataFrame([['attack_'+str(count_attacks), start, prev_datetime, (start - (prev_datetime - start)) - 200]],
+            interval = pd.DataFrame([['attack_' + str(count_attacks), start, prev_datetime, (start - (prev_datetime - start)) - 200]],
                                     columns=['Name', 'Start', 'End', 'Replay_Copy'], index=[count_attacks])
             # Using pd.concat to add interval to attack_intervals
             attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
@@ -35,7 +35,7 @@ def identify_attacks(test_data):
         prev_datetime = index
     
     count_attacks = count_attacks + 1
-    interval = pd.DataFrame([['attack_'+str(count_attacks), start, prev_datetime, start - (prev_datetime - start) - 200]],
+    interval = pd.DataFrame([['attack_' + str(count_attacks), start, prev_datetime, start - (prev_datetime - start) - 200]],
                             columns=['Name', 'Start', 'End', 'Replay_Copy'], index=[count_attacks])
     
     # Final concatenation after the loop
