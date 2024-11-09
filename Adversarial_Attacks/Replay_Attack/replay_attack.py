@@ -14,35 +14,37 @@ constraints_setting = args.constraint_setting[0]
 
 def identify_attacks(test_data):
     """
-    Identifies attack intervals in test_data based on integer timestamps in the 'DATETIME' column.
-    Returns a DataFrame summarizing these intervals.
+    Identifies attack intervals in test_data and returns a DataFrame summarizing these intervals.
     """
     attacks = test_data.loc[test_data['ATT_FLAG'] == 1]
     if attacks.empty:
         print("Warning: No attacks found in test_data.")
         return pd.DataFrame(columns=['Name', 'Start', 'End', 'Replay_Copy'])
 
-    prev_timestamp = attacks.index[0]
-    start = prev_timestamp
+    prev_datetime = attacks.index[0]
+    start = prev_datetime
     count_attacks = 0
     attack_intervals = pd.DataFrame(columns=['Name', 'Start', 'End', 'Replay_Copy'])
 
     for index, _ in attacks.iterrows():
         if count_attacks == 3:
             count_attacks += 1
-        # Adjust interval threshold based on integer values instead of timedelta
-        if index - prev_timestamp > 200:  # Example threshold for detecting new intervals
+        if (index - prev_datetime > pd.Timedelta("1 day")):
             count_attacks += 1
-            interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_timestamp, start - (prev_timestamp - start) - 200]],
+            interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_datetime,
+                                      start - (prev_datetime - start) - pd.Timedelta(seconds=200)]],
                                     columns=['Name', 'Start', 'End', 'Replay_Copy'])
-            attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
+            if not interval.empty:  # Avoid adding empty intervals
+                attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
             start = index
-        prev_timestamp = index
+        prev_datetime = index
 
     count_attacks += 1
-    interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_timestamp, start - (prev_timestamp - start) - 200]],
+    interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_datetime,
+                              start - (prev_datetime - start) - pd.Timedelta(seconds=200)]],
                             columns=['Name', 'Start', 'End', 'Replay_Copy'])
-    attack_intervals = pd.concat([attack_intervals, interval.dropna()], ignore_index=True)
+    if not interval.empty:
+        attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
 
     print('_________________________________ATTACK INTERVALS___________________________________\n')
     print(attack_intervals)
