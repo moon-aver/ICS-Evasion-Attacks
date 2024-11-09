@@ -146,26 +146,26 @@ if __name__ == "__main__":
             list_of_constraints = ['PLC_1', 'PLC_2']
         else:
             list_of_constraints = [2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 60, 70, 80]
-            
+
     data_folder = '../../Data/' + dataset
 
     for i in list_of_constraints:
         if dataset == 'BATADAL':
-            test_data = pd.read_csv(data_folder + '/test_dataset_1.csv', parse_dates=['DATETIME']).drop(columns=['Unnamed: 0'], axis=1)
-            test_data = parse_datetime_column(test_data)
+            test_data = pd.read_csv(data_folder + '/test_dataset_1.csv').drop(columns=['Unnamed: 0'], axis=1)
+            test_data = parse_datetime_column(test_data, date_column='DATETIME')
             test_data.set_index('DATETIME', inplace=True)
 
-            eavesdropped_data = pd.read_csv(data_folder + "/test_dataset_1.csv", parse_dates=['DATETIME']).drop(columns=['Unnamed: 0'], axis=1)
-            eavesdropped_data = parse_datetime_column(eavesdropped_data)
+            eavesdropped_data = pd.read_csv(data_folder + "/test_dataset_1.csv").drop(columns=['Unnamed: 0'], axis=1)
+            eavesdropped_data = parse_datetime_column(eavesdropped_data, date_column='DATETIME')
             eavesdropped_data.set_index('DATETIME', inplace=True)
 
         if dataset == 'WADI':
-            test_data = pd.read_csv(data_folder + '/attacks_october_clean_with_label.csv', parse_dates=['DATETIME'])
-            test_data = parse_datetime_column(test_data)
+            test_data = pd.read_csv(data_folder + '/attacks_october_clean_with_label.csv')
+            test_data = parse_datetime_column(test_data, date_column='DATETIME')
             test_data.set_index('DATETIME', inplace=True)
 
-            eavesdropped_data = pd.read_csv(data_folder + "/train_dataset.csv", parse_dates=['DATETIME'])
-            eavesdropped_data = parse_datetime_column(eavesdropped_data)
+            eavesdropped_data = pd.read_csv(data_folder + "/train_dataset.csv")
+            eavesdropped_data = parse_datetime_column(eavesdropped_data, date_column='DATETIME')
             eavesdropped_data.set_index('DATETIME', inplace=True)
 
         constraints = []
@@ -182,20 +182,20 @@ if __name__ == "__main__":
                     s = open('../Whitebox_Attack/constraints/' + dataset + '/constraint_variables_attack_' + str(att_num) + '.txt', 'r').read()
                 dictionary = eval(s)
                 constraints.append(dictionary[i])
-                
+
                 print('ATT Num:', att_num)
                 test_data = pd.read_csv(
-                    '../../Data/BATADAL/attack_' + str(att_num) + '_from_test_dataset.csv', 
-                    parse_dates=['DATETIME']
+                    '../../Data/BATADAL/attack_' + str(att_num) + '_from_test_dataset.csv'
                 ).drop(columns=['Unnamed: 0'], axis=1)
-                test_data = parse_datetime_column(test_data)
-                
+                test_data = parse_datetime_column(test_data, date_column='DATETIME')
+                test_data.set_index('DATETIME', inplace=True)
+
                 spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
                 output_path = './results/BATADAL/attack_' + str(att_num) + '_replay_max_' + str(i) + '.csv'
                 if constraints_setting == 'topology':
                     output_path = './results/BATADAL/constrained_PLC/constrained_' + str(i) + '_attack_' + str(att_num) + '.csv'
                 spoofed_data.to_csv(output_path)
-        
+
         if dataset == 'WADI':
             for att_num in [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]:
                 if constraints_setting == 'topology':
@@ -208,15 +208,15 @@ if __name__ == "__main__":
 
                 print('ATT Num:', att_num)
                 test_data = pd.read_csv(
-                    '../../Data/' + dataset + '/attack_' + str(att_num) + '_from_test_dataset.csv',
-                    parse_dates=['DATETIME']
+                    '../../Data/' + dataset + '/attack_' + str(att_num) + '_from_test_dataset.csv'
                 )
-                test_data = parse_datetime_column(test_data)
+                test_data = parse_datetime_column(test_data, date_column='DATETIME')
+                test_data.set_index('DATETIME', inplace=True)
 
                 spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
 
                 output_path = './results/' + dataset + '/attack_' + str(att_num) + '_replay_max_' + str(i) + '.csv'
                 if constraints_setting == 'topology':
                     output_path = './results/' + dataset + '/constrained_PLC/constrained_' + str(i) + '_attack_' + str(att_num) + '.csv'
-                
+
                 spoofed_data.to_csv(output_path)
