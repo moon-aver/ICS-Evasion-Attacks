@@ -5,28 +5,19 @@ pd.set_option('display.max_columns', 500)
 
 def parse_datetime_column(df, date_column='DATETIME'):
     """
-    Attempts to parse the specified datetime column to ensure consistency in date format.
-    Converts inconsistent formats, including numeric formats like decimal hours, to datetime and fills NaT values.
+    Parses the specified datetime column to ensure consistency in date format.
+    Handles both standard datetime strings and numeric time representations.
     """
-    # Check if column has numeric time data
+    # Check if the column contains numeric values
     if pd.api.types.is_numeric_dtype(df[date_column]):
-        # Convert from decimal hours to timedelta and add a base date for consistency
-        base_date = pd.Timestamp(
-        base_date = pd.Timest
-'2023-01-01')
-        df[date_column] = base_date + pd.to_timedelta(df[date_column], unit=
-        df[date_column] =
-'h')
+        # Convert numeric time (assumed to be in hours) to timedelta
+        df[date_column] = pd.to_timedelta(df[date_column], unit='h') + pd.Timestamp('2017-01-01')
     else:
-        # Attempt to convert other datetime formats directly
-        df[date_column] = pd.to_datetime(df[date_column], errors=
-        df[date_column] = pd.to_dateti
-'coerce')
+        # Attempt to parse standard datetime strings
+        df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
     
-    # Fill any NaT values
-    df[date_column] = df[date_column].fillna(method=
-    df[date_colu
-'ffill').fillna(method='bfill')
+    # Handle any remaining NaT values
+    df[date_column] = df[date_column].fillna(method='ffill').fillna(method='bfill')
     return df
 
 def identify_attacks(test_data):
