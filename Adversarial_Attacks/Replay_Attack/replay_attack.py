@@ -81,7 +81,7 @@ def replay(df, row, eavesdropped_data, attack_intervals, *args):
     DataFrame
         data with applied replay attack
     """
-    df = df.append(eavesdropped_data.loc[row['Replay_Copy']: row['Replay_Copy']+(row['End']-(row['Start']))])[test_data.columns.tolist()]  # append replayed row
+    df = pd.concat([df, eavesdropped_data.loc[row['Replay_Copy']: row['Replay_Copy'] + (row['End'] - row['Start'])]][test_data.columns.tolist()], ignore_index=True)
     return df
 
 def constrained_replay(df, row, eavesdropped_data, attack_intervals, *args):
