@@ -6,59 +6,44 @@ pd.set_option('display.max_columns', 500)
 import pandas as pd
 import numpy as np
 
+pd.set_option('display.max_columns', 500)
+
 def parse_datetime_column(df, date_column='DATETIME'):
-    """
-    Converts the specified datetime column to a consistent datetime format.
-    Handles both standard datetime strings and numeric time representations.
-    """
     def convert_numeric_to_datetime(x):
         if isinstance(x, (int, float)):
             return pd.Timestamp("2017-01-01") + pd.to_timedelta(x, unit='h')
         return pd.NaT
 
-    # Convert standard datetime strings
     df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
-
-    # For remaining NaT values (likely from numeric entries), handle as numeric
     numeric_mask = df[date_column].isna() & df[date_column].astype(str).str.isnumeric()
     df.loc[numeric_mask, date_column] = df.loc[numeric_mask, date_column].apply(convert_numeric_to_datetime)
-
-    # Fill NaT values with nearest valid dates
     df[date_column] = df[date_column].ffill().bfill()
     return df
 
 def identify_attacks(test_data):
-    """
-    Identifies attack intervals in test_data and returns a DataFrame summarizing these intervals.
-    """
     attacks = test_data.loc[test_data['ATT_FLAG'] == 1]
     prev_datetime = attacks.index[0]
     start = prev_datetime
     count_attacks = 0
-
     attack_intervals = pd.DataFrame(columns=['Name', 'Start', 'End', 'Replay_Copy'])
+
     for index, _ in attacks.iterrows():
         if count_attacks == 3:
             count_attacks += 1
         if (index - prev_datetime > pd.Timedelta("1 day")):
             count_attacks += 1
-            interval = pd.DataFrame([[
-                f'attack_{count_attacks}',
-                start,
-                prev_datetime,
-                start - (prev_datetime - start) - pd.Timedelta(seconds=200)
-            ]], columns=['Name', 'Start', 'End', 'Replay_Copy'])
+            interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_datetime,
+                                      start - (prev_datetime - start) - pd.Timedelta(seconds=200)]],
+                                    columns=['Name', 'Start', 'End', 'Replay_Copy'])
             attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
             start = index
         prev_datetime = index
+
     count_attacks += 1
-    interval = pd.DataFrame([[
-        f'attack_{count_attacks}',
-        start,
-        prev_datetime,
-        start - (prev_datetime - start) - pd.Timedelta(seconds=200)
-    ]], columns=['Name', 'Start', 'End', 'Replay_Copy'])
-    attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
+    interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_datetime,
+                              start - (prev_datetime - start) - pd.Timedelta(seconds=200)]],
+                            columns=['Name', 'Start', 'End', 'Replay_Copy'])
+    attack_intervals = pd.concat([attack_intervals, interval.dropna()], ignore_index=True)
 
     print('_________________________________ATTACK INTERVALS___________________________________\n')
     print(attack_intervals)
@@ -87,21 +72,18 @@ def replay(df, row, eavesdropped_data, attack_intervals, *args):
     return df
 
 def constrained_replay(df, row, eavesdropped_data, attack_intervals, *args):
-    """
-    Constrained version of the replay attack.
-    """
     constraints = args[0]
     check_constraints(constraints)
-    try:
-        end_idx = row['Replay_Copy'] + (row['End'] - row['Start']) + pd.Timedelta("1 second")
-        test_data[constraints[0]] = eavesdropped_data[constraints[0]].loc[row['Replay_Copy']:end_idx].values
-    except:
-        try:
-            end_idx = row['Replay_Copy'] + (row['End'] - row['Start'])
-            test_data[constraints[0]] = eavesdropped_data[constraints[0]].loc[row['Replay_Copy']:end_idx].values
-        except:
-            end_idx = row['Replay_Copy'] + (row['End'] - row['Start']) - pd.Timedelta("1 second")
-            test_data[constraints[0]] = eavesdropped_data[constraints[0]].loc[row['Replay_Copy']:end_idx].values
+
+    # Check if range exists in eavesdropped_data
+    end_idx = row['Replay_Copy'] + (row['End'] - row['Start']) + pd.Timedelta("1 second")
+    replay_range = eavesdropped_data[constraints[0]].loc[row['Replay_Copy']:end_idx]
+
+    # Ensure range is non-empty before assignment
+    if not replay_range.empty:
+        test_data[constraints[0]] = replay_range.values
+    else:
+        print(f"Warning: Replay range from {row['Replay_Copy']} to {end_idx} is empty for constraint {constraints[0]}. Skipping assignment.")
     return test_data
 
 def check_constraints(constraints):
@@ -109,6 +91,7 @@ def check_constraints(constraints):
         print('Provide constraints')
         import sys
         sys.exit()
+        
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--data', nargs='+', type=str, default=['BATADAL'])
