@@ -3,20 +3,28 @@ import numpy as np
 
 pd.set_option('display.max_columns', 500)
 
+import pandas as pd
+import numpy as np
+
 def parse_datetime_column(df, date_column='DATETIME'):
     """
-    Parses the specified datetime column to ensure consistency in date format.
+    Converts the specified datetime column to a consistent datetime format.
     Handles both standard datetime strings and numeric time representations.
     """
-    # Check if the column contains numeric values
-    if pd.api.types.is_numeric_dtype(df[date_column]):
-        # Convert numeric time (assumed to be in hours) to timedelta
-        df[date_column] = pd.to_timedelta(df[date_column], unit='h') + pd.Timestamp('2017-01-01')
-    else:
-        # Attempt to parse standard datetime strings
-        df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
-    
-    # Handle any remaining NaT values
+    def convert_numeric_to_datetime(x):
+        # If numeric, treat as hours and add to a base date
+        if isinstance(x, (int, float)):
+            return pd.Timestamp("2017-01-01") + pd.to_timedelta(x, unit='h')
+        return pd.NaT
+
+    # First, attempt to convert standard datetime strings
+    df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
+
+    # For any remaining NaT values (likely from numeric entries), handle as numeric
+    numeric_mask = df[date_column].isna() & df[date_column].astype(str).str.isnumeric()
+    df.loc[numeric_mask, date_column] = df.loc[numeric_mask, date_column].apply(convert_numeric_to_datetime)
+
+    # Fill NaT values with nearest valid dates
     df[date_column] = df[date_column].fillna(method='ffill').fillna(method='bfill')
     return df
 
