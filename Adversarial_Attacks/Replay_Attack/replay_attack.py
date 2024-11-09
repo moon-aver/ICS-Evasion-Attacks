@@ -7,24 +7,10 @@ def parse_datetime_column(df, date_column='DATETIME'):
     """
     Attempts to parse the specified datetime column to ensure consistency in date format.
     Converts inconsistent formats to datetime and fills NaT values.
-    
-    Parameters
-    ----------
-    df : DataFrame
-        DataFrame containing the column to parse
-    date_column : str
-        Name of the column containing datetime information
-
-    Returns
-    -------
-    DataFrame
-        DataFrame with parsed datetime column
     """
-    # Attempt to convert, allowing for mixed formats by letting pandas infer
+    # Convert and fill NaT values
     df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
-    # Fill NaT values by propagating the nearest valid date value forward or backward
     df[date_column] = df[date_column].fillna(method='ffill').fillna(method='bfill')
-    
     return df
 
 def identify_attacks(test_data):
@@ -150,6 +136,7 @@ if __name__ == "__main__":
 
     for i in list_of_constraints:
         if dataset == 'BATADAL':
+            # 파일 읽기 (parse_dates 및 date_parser 제거)
             test_data = pd.read_csv(data_folder + '/test_dataset_1.csv').drop(columns=['Unnamed: 0'], axis=1)
             test_data = parse_datetime_column(test_data, date_column='DATETIME')
             test_data.set_index('DATETIME', inplace=True)
@@ -183,6 +170,7 @@ if __name__ == "__main__":
                 constraints.append(dictionary[i])
 
                 print('ATT Num:', att_num)
+                # 파일 읽기 및 날짜 변환 적용
                 test_data = pd.read_csv(
                     '../../Data/BATADAL/attack_' + str(att_num) + '_from_test_dataset.csv'
                 ).drop(columns=['Unnamed: 0'], axis=1)
@@ -206,6 +194,7 @@ if __name__ == "__main__":
                 constraints.append(dictionary[i])
 
                 print('ATT Num:', att_num)
+                # 파일 읽기 및 날짜 변환 적용
                 test_data = pd.read_csv(
                     '../../Data/' + dataset + '/attack_' + str(att_num) + '_from_test_dataset.csv'
                 )
