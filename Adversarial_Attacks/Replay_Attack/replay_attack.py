@@ -29,7 +29,7 @@ def identify_attacks(test_data):
     for index, _ in attacks.iterrows():
         if count_attacks == 3:
             count_attacks += 1
-        if (index - prev_timestamp) > 24:  # Use 24 as the numeric threshold (e.g., 24 hours if in hours)
+        if (index - prev_timestamp) > 1:  # Set back to 1 if using smaller intervals
             count_attacks += 1
             interval = pd.DataFrame([[f'attack_{count_attacks}', start, prev_timestamp,
                                       start - (prev_timestamp - start) - 200]],
@@ -69,18 +69,13 @@ def constrained_replay(df, row, eavesdropped_data, attack_intervals, constraints
     """
     Constrained version of the replay attack using integer timestamps.
     """
-    # Ensure constraints is a flat list of strings
     if any(isinstance(c, list) for c in constraints):
         constraints = [item for sublist in constraints for item in sublist]
 
     check_constraints(constraints)
-    end_idx = int(row['Replay_Copy']) + int(row['End'] - row['Start']) + 1  # Adjust for inclusive range
+    end_idx = int(row['Replay_Copy']) + int(row['End'] - row['Start']) + 1
 
     for constraint in constraints:
-        if isinstance(constraint, list):  # Check for any residual nested lists
-            print(f"Error: Constraint '{constraint}' is unexpectedly a list. Flattening may be incomplete.")
-            continue
-
         if constraint not in eavesdropped_data.columns:
             print(f"Warning: Constraint '{constraint}' not in eavesdropped data columns.")
             continue
@@ -107,10 +102,10 @@ if __name__ == "__main__":
     data_folder = f'../../Data/{dataset}'
     for i in list_of_constraints:
         test_data = pd.read_csv(f'{data_folder}/test_dataset_1.csv').drop(columns=['Unnamed: 0'], axis=1)
-        test_data.set_index('DATETIME', inplace=True)  # Ensure 'DATETIME' is integer-based index
+        test_data.set_index('DATETIME', inplace=True)
 
         eavesdropped_data = pd.read_csv(f'{data_folder}/test_dataset_1.csv').drop(columns=['Unnamed: 0'], axis=1)
-        eavesdropped_data.set_index('DATETIME', inplace=True)  # Ensure 'DATETIME' is integer-based index
+        eavesdropped_data.set_index('DATETIME', inplace=True)
 
         constraints = []
         attack_intervals = identify_attacks(test_data)
@@ -125,18 +120,10 @@ if __name__ == "__main__":
                 test_data.set_index('DATETIME', inplace=True)
 
                 spoofed_data = spoof(constrained_replay, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
+
+                # Check if spoofed_data is empty before saving
                 output_path = f'./results/BATADAL/{"constrained_PLC/constrained_" + str(i) + "_attack_" + str(att_num) if constraints_setting == "topology" else f"attack_{att_num}_replay_max_{i}"}.csv'
-                spoofed_data.to_csv(output_path)
-
-        elif dataset == 'WADI':
-            for att_num in [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]:
-                s = open(f'../{"Black_Box_Attack" if constraints_setting == "topology" else "Whitebox_Attack"}/constraints/{dataset}/{"constraint_PLC" if constraints_setting == "topology" else f"constraint_variables_attack_{att_num}"}.txt').read()
-                dictionary = eval(s)
-                constraints.append(dictionary[i])
-
-                test_data = pd.read_csv(f'../../Data/{dataset}/attack_{att_num}_from_test_dataset.csv')
-                test_data.set_index('DATETIME', inplace=True)
-
-                spoofed_data = spoof(constrained_replay, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
-                output_path = f'./results/{dataset}/{"constrained_PLC/constrained_" + str(i) + "_attack_" + str(att_num) if constraints_setting == "topology" else f"attack_{att_num}_replay_max_{i}"}.csv'
-                spoofed_data.to_csv(output_path)
+                if not spoofed_data.empty:
+                    spoofed_data.to_csv(output_path)
+                else:
+                    print(f"Warning: N
