@@ -5,10 +5,18 @@ pd.set_option('display.max_columns', 500)
 
 def parse_datetime_column(df, date_column='DATETIME'):
     """
-    Converts specified datetime column to a consistent format, handles errors by coercing to NaT,
-    and fills NaT values with forward and backward filling methods.
+    Attempts to parse the specified datetime column to ensure consistency in date format.
+    Converts inconsistent formats, including numeric formats, to datetime and fills NaT values.
     """
-    df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
+    # Identify numeric values and handle them specifically
+    if pd.api.types.is_numeric_dtype(df[date_column]):
+        # Assume the numeric format is in hours (e.g., 1727.25 might represent 17:27:15)
+        df[date_column] = pd.to_timedelta(df[date_column], unit='h') + pd.Timestamp('2023-01-01')
+    else:
+        # Convert 'DATETIME' column to datetime, setting invalid parsing to NaT
+        df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
+    
+    # Fill NaT values with forward and backward fill methods
     df[date_column] = df[date_column].fillna(method='ffill').fillna(method='bfill')
     return df
 
