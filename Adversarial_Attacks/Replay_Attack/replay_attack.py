@@ -86,9 +86,11 @@ def constrained_replay(df, row, eavesdropped_data, attack_intervals, *args):
     constraints = args[0]
     check_constraints(constraints)
 
-    # Calculate replay range and check its existence in eavesdropped_data
     end_idx = row['Replay_Copy'] + (row['End'] - row['Start']) + pd.Timedelta("1 second")
     for constraint in constraints:
+        if constraint not in eavesdropped_data.columns:
+            print(f"Warning: Constraint '{constraint}' not in eavesdropped data columns.")
+            continue
         replay_range = eavesdropped_data[constraint].loc[row['Replay_Copy']:end_idx]
         if not replay_range.empty:
             df[constraint] = replay_range.values
@@ -102,7 +104,6 @@ def check_constraints(constraints):
         import sys
         sys.exit()
 
-# Main execution block
 if __name__ == "__main__":
     if dataset == 'BATADAL':
         list_of_constraints = ['PLC_1', 'PLC_2', 'PLC_3', 'PLC_4', 'PLC_5', 'PLC_6', 'PLC_7', 'PLC_8', 'PLC_9'] if constraints_setting == 'topology' else [2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 35, 40]
