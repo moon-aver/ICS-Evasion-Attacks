@@ -6,7 +6,7 @@ pd.set_option('display.max_columns', 500)
 def parse_datetime_column(df, date_column='DATETIME'):
     """
     Attempts to parse the specified datetime column to ensure consistency in date format.
-    Converts inconsistent formats using 'mixed' approach and fills NaT values.
+    Converts inconsistent formats to datetime and fills NaT values.
     
     Parameters
     ----------
@@ -20,7 +20,9 @@ def parse_datetime_column(df, date_column='DATETIME'):
     DataFrame
         DataFrame with parsed datetime column
     """
-    df[date_column] = pd.to_datetime(df[date_column], errors='coerce', format='mixed')
+    # Attempt to convert, allowing for mixed formats by letting pandas infer
+    df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
+    # Fill NaT values by propagating the nearest valid date value forward or backward
     df[date_column] = df[date_column].fillna(method='ffill').fillna(method='bfill')
     
     return df
@@ -146,7 +148,7 @@ if __name__ == "__main__":
 
     data_folder = '../../Data/' + dataset
 
-    for i in list_of_constraints:    
+    for i in list_of_constraints:
         if dataset == 'BATADAL':
             test_data = pd.read_csv(data_folder + '/test_dataset_1.csv').drop(columns=['Unnamed: 0'], axis=1)
             test_data = parse_datetime_column(test_data, date_column='DATETIME')
@@ -217,4 +219,3 @@ if __name__ == "__main__":
                     output_path = './results/' + dataset + '/constrained_PLC/constrained_' + str(i) + '_attack_' + str(att_num) + '.csv'
 
                 spoofed_data.to_csv(output_path)
-
