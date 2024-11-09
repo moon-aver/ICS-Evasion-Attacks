@@ -149,7 +149,14 @@ if __name__ == "__main__":
                 constraints.append(dictionary[i])
                 
                 print('ATT Num:', att_num)
-                test_data = pd.read_csv('../../Data/BATADAL/attack_' + str(att_num) + '_from_test_dataset.csv', index_col=['DATETIME'], parse_dates=True).drop(columns=['Unnamed: 0'], axis=1)
+                # DATETIME 열이 'YYYY-MM-DD HH:MM:SS' 형식일 경우
+                test_data = pd.read_csv(
+                    '../../Data/BATADAL/attack_' + str(att_num) + '_from_test_dataset.csv', 
+                    index_col=['DATETIME'], 
+                    parse_dates=['DATETIME'], 
+                    date_parser=lambda x: pd.to_datetime(x, format='%Y-%m-%d %H:%M:%S')  # 날짜 형식을 명확히 지정
+                ).drop(columns=['Unnamed: 0'], axis=1)
+
                 spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
                 output_path = './results/BATADAL/attack_' + str(att_num) + '_replay_max_' + str(i) + '.csv'
                 if constraints_setting == 'topology':
