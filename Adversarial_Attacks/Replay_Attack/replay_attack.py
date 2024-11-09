@@ -25,9 +25,9 @@ def parse_datetime_column(df, date_column='DATETIME'):
     df.loc[numeric_mask, date_column] = df.loc[numeric_mask, date_column].apply(convert_numeric_to_datetime)
 
     # Fill NaT values with nearest valid dates
-    df[date_column] = df[date_column].fillna(method='ffill').fillna(method='bfill')
+    df[date_column] = df[date_column].ffill().bfill()
     return df
-
+    
 def identify_attacks(test_data):
     """
     Identifies attack intervals in test_data and returns a DataFrame summarizing these intervals.
@@ -41,15 +41,16 @@ def identify_attacks(test_data):
     for index, _ in attacks.iterrows():
         if count_attacks == 3:
             count_attacks += 1
-        if (index - prev_datetime > 1):
+        # Compare timedelta with one day instead of integer 1
+        if (index - prev_datetime > pd.Timedelta("1 day")):
             count_attacks += 1
-            interval = pd.DataFrame([['attack_' + str(count_attacks), start, prev_datetime, start - (prev_datetime - start) - 200]],
+            interval = pd.DataFrame([['attack_' + str(count_attacks), start, prev_datetime, start - (prev_datetime - start) - pd.Timedelta("200 seconds")]],
                                     columns=['Name', 'Start', 'End', 'Replay_Copy'])
             attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
             start = index
         prev_datetime = index
     count_attacks += 1
-    interval = pd.DataFrame([['attack_' + str(count_attacks), start, prev_datetime, start - (prev_datetime - start) - 200]],
+    interval = pd.DataFrame([['attack_' + str(count_attacks), start, prev_datetime, start - (prev_datetime - start) - pd.Timedelta("200 seconds")]],
                             columns=['Name', 'Start', 'End', 'Replay_Copy'])
     attack_intervals = pd.concat([attack_intervals, interval], ignore_index=True)
 
