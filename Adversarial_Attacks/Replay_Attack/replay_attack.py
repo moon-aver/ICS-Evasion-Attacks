@@ -157,7 +157,7 @@ if __name__ == "__main__":
             test_data = pd.read_csv(data_folder+'/attacks_october_clean_with_label.csv')
             eavesdropped_data = pd.read_csv(data_folder+"/train_dataset.csv")
 
-        constraints=[]
+        constraints = pd.DataFrame()
 
         actuator_columns = eavesdropped_data.filter(
             regex=("STATUS")).columns.tolist()
@@ -173,7 +173,7 @@ if __name__ == "__main__":
                     s = open('../Whitebox_Attack/constraints/'+dataset+'/constraint_variables_attack_'+str(att_num)+'.txt', 'r').read()
                 dictionary =  eval(s)
                 print(dictionary)
-                pd.concat([constraints,dictionary[i]])
+                constraints = pd.concat([constraints, pd.DataFrame([dictionary[i]])], ignore_index=True)
                 
                 print(constraints)
 
@@ -206,10 +206,10 @@ if __name__ == "__main__":
                 else:
                     s = open('../Whitebox_Attack/constraints/'+dataset+'/constraint_variables_attack_'+str(att_num)+'.txt', 'r').read()
                 dictionary =  eval(s)
-                pd.concat([constraints,dictionary[i]])
+                constraints = pd.concat([constraints, pd.DataFrame([dictionary[i]])], ignore_index=True)
                 
                 dictionary =  eval(s)
-                pd.concat([constraints,dictionary[i]])
+                constraints = pd.concat([constraints, pd.DataFrame([dictionary[i]])], ignore_index=True)
                 print('ATT Num: '+str(att_num))
                 test_data =  pd.read_csv('../../Data/BATADAL/attack_'+str(att_num)+'_from_test_dataset.csv', index_col=['DATETIME'], parse_dates=True)
                 test_data = test_data.drop(columns=['Unnamed: 0'], axis=1)
@@ -227,7 +227,7 @@ if __name__ == "__main__":
                     s = open('../Whitebox_Attack/constraints/'+dataset+'/constraint_variables_attack_'+str(att_num)+'.txt', 'r').read()
                 dictionary =  eval(s)
                 #print(dictionary)
-                pd.concat([constraints,dictionary[i]])
+                constraints = pd.concat([constraints, pd.DataFrame([dictionary[i]])], ignore_index=True)
                 
                 #print(constraints)
 
