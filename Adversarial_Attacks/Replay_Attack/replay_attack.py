@@ -212,7 +212,7 @@ if __name__ == "__main__":
                 else:
                     print(f"Warning: Attack number {att_num} is out of bounds. No data processed for att_num {att_num}.")
                 
-                test_data = test_data.drop(columns=['Unnamed: 0'], axis=1)
+                test_data = test_data.drop(columns=['Unnamed: 0'], axis=1, errors='ignore')
                 spoofed_data = spoof(spoofing_technique, attack_intervals,
                                     eavesdropped_data, test_data, att_num, constraints )
                 if constraints_setting == 'topology':
