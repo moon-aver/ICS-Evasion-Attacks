@@ -203,8 +203,6 @@ if __name__ == "__main__":
                 # attack_intervals의 범위 내에 있는지 검증
                 if att_num-1 < len(attack_intervals):
                     spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
-                    # 범위 내에서 spoof 함수 호출 및 결과 저장
-                    spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
                     if constraints_setting == 'topology':
                         spoofed_data.to_csv('./results/BATADAL/constrained_PLC/constrained_'+str(i)+'_attack_'+str(att_num)+'.csv')
                     else:
