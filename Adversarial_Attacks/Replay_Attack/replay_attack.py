@@ -122,6 +122,21 @@ def check_constraints(constraints):
     else:
         pass
 
+def parse_datetime_column(data_frame, column_name='DATETIME'):
+    # 날짜 형식을 검사하여 적절한 처리를 선택
+    if pd.api.types.is_numeric_dtype(data_frame[column_name]):
+        # 숫자 형식이면 기준 시간에 시간을 더한다고 가정 (예: 분 단위)
+        start_time = datetime.datetime(2024, 1, 1)  # 기준 시간 설정
+        data_frame[column_name] = data_frame[column_name].apply(lambda x: start_time + datetime.timedelta(minutes=x))
+    else:
+        try:
+            # 시도: 표준 날짜/시간 형식으로 파싱
+            data_frame[column_name] = pd.to_datetime(data_frame[column_name])
+        except ValueError:
+            # 파싱 실패 시 경고 출력 및 원본 데이터 유지
+            print("Warning: DATETIME column could not be parsed as standard date format. It will be used as is.")
+    return data_frame
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--data', nargs='+', type=str, default=['BATADAL'])
@@ -178,7 +193,12 @@ if __name__ == "__main__":
                 print(constraints)
 
                 print('ATT Num: '+str(att_num))
-                test_data =  pd.read_csv('../../Data/BATADAL/attack_'+str(att_num)+'_from_test_dataset.csv', index_col=['DATETIME'], parse_dates=True)
+                # test_data =  pd.read_csv('../../Data/BATADAL/attack_'+str(att_num)+'_from_test_dataset.csv', index_col=['DATETIME'], parse_dates=True)
+                # CSV 파일 읽기 (날짜 파싱 없이)
+                test_data = pd.read_csv('../../Data/BATADAL/attack_'+str(att_num)+'_from_test_dataset.csv')                
+                # DATETIME 열 파싱
+                test_data = parse_datetime_column(test_data)
+
                 test_data = test_data.drop(columns=['Unnamed: 0'], axis=1)
                 spoofed_data = spoof(spoofing_technique, attack_intervals,
                                     eavesdropped_data, test_data, att_num, constraints )
