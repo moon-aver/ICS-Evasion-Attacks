@@ -198,12 +198,11 @@ if __name__ == "__main__":
                 test_data = pd.read_csv('../../Data/BATADAL/attack_'+str(att_num)+'_from_test_dataset.csv')                
                 # DATETIME 열 파싱
                 test_data = parse_datetime_column(test_data)
-                test_data = test_data.drop(columns=['Unnamed: 0'], axis=1)
+                test_data = test_data.drop(columns=['Unnamed: 0'], axis=1, errors='ignore')
                 
                 # attack_intervals의 범위 내에 있는지 검증
                 if att_num-1 < len(attack_intervals):
                     spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
-                    
                     # 결과 파일 저장
                     if constraints_setting == 'topology':
                         spoofed_data.to_csv('./results/BATADAL/constrained_PLC/constrained_'+str(i)+'_attack_'+str(att_num)+'.csv')
