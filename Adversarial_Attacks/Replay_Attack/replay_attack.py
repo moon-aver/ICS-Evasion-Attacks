@@ -31,14 +31,14 @@ def identify_attacks(test_data):
             count_attacks = count_attacks + 1
             interval = pd.DataFrame([['attack_'+str(count_attacks), start, prev_datetime, (start - (prev_datetime - start)) - 200]]
                                     , columns=['Name', 'Start', 'End', 'Replay_Copy'], index = [count_attacks])
-            pd.concat([attack_intervals,interval])
+            attack_intervals = attack_intervals.append(interval)
             start = index
         prev_datetime = index
     count_attacks = count_attacks + 1
     interval = pd.DataFrame([['attack_'+str(count_attacks), start, prev_datetime, start - (
         prev_datetime - start) - 200]]
                             , columns=['Name', 'Start', 'End', 'Replay_Copy'], index = [count_attacks])
-    pd.concat([attack_intervals,interval])
+    attack_intervals = attack_intervals.append(interval)
 
     print('_________________________________ATTACK INTERVALS___________________________________\n')
     print(attack_intervals)
@@ -85,8 +85,8 @@ def replay(df, row, eavesdropped_data, attack_intervals, *args):
     DataFrame
         data with applied replay attack
     """
-    df.concat([df,eavesdropped_data.loc[row['Replay_Copy']: row['Replay_Copy']+(
-        row['End']-(row['Start']))]])[test_data.columns.tolist()]  # append replayed row    
+    df = df.append(eavesdropped_data.loc[row['Replay_Copy']: row['Replay_Copy']+(
+        row['End']-(row['Start']))])[test_data.columns.tolist()]  # append replayed row
     return df
 
 
@@ -121,21 +121,6 @@ def check_constraints(constraints):
         sys.exit()
     else:
         pass
-
-def parse_datetime_column(data_frame, column_name='DATETIME'):
-    # 날짜 형식을 검사하여 적절한 처리를 선택
-    if pd.api.types.is_numeric_dtype(data_frame[column_name]):
-        # 숫자 형식이면 기준 시간에 시간을 더한다고 가정 (예: 분 단위)
-        start_time = datetime.datetime(2024, 1, 1)  # 기준 시간 설정
-        data_frame[column_name] = data_frame[column_name].apply(lambda x: start_time + datetime.timedelta(minutes=x))
-    else:
-        try:
-            # 시도: 표준 날짜/시간 형식으로 파싱
-            data_frame[column_name] = pd.to_datetime(data_frame[column_name])
-        except ValueError:
-            # 파싱 실패 시 경고 출력 및 원본 데이터 유지
-            print("Warning: DATETIME column could not be parsed as standard date format. It will be used as is.")
-    return data_frame
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -172,7 +157,7 @@ if __name__ == "__main__":
             test_data = pd.read_csv(data_folder+'/attacks_october_clean_with_label.csv')
             eavesdropped_data = pd.read_csv(data_folder+"/train_dataset.csv")
 
-        constraints = pd.DataFrame()
+        constraints=[]
 
         actuator_columns = eavesdropped_data.filter(
             regex=("STATUS")).columns.tolist()
@@ -188,29 +173,15 @@ if __name__ == "__main__":
                     s = open('../Whitebox_Attack/constraints/'+dataset+'/constraint_variables_attack_'+str(att_num)+'.txt', 'r').read()
                 dictionary =  eval(s)
                 print(dictionary)
-                constraints = pd.concat([constraints, pd.DataFrame([dictionary[i]])], ignore_index=True)
+                constraints.append(dictionary[i])
                 
                 print(constraints)
 
                 print('ATT Num: '+str(att_num))
-                # test_data =  pd.read_csv('../../Data/BATADAL/attack_'+str(att_num)+'_from_test_dataset.csv', index_col=['DATETIME'], parse_dates=True)
-                # CSV 파일 읽기 (날짜 파싱 없이)
-                test_data = pd.read_csv('../../Data/BATADAL/attack_'+str(att_num)+'_from_test_dataset.csv')                
-                # DATETIME 열 파싱
-                test_data = parse_datetime_column(test_data)
-                test_data = test_data.drop(columns=['Unnamed: 0'], axis=1, errors='ignore')
-                
-                # attack_intervals의 범위 내에 있는지 검증
-                if att_num-1 < len(attack_intervals):
-                    spoofed_data = spoof(spoofing_technique, attack_intervals, eavesdropped_data, test_data, att_num, constraints)
-                    if constraints_setting == 'topology':
-                        spoofed_data.to_csv('./results/BATADAL/constrained_PLC/constrained_'+str(i)+'_attack_'+str(att_num)+'.csv')
-                    else:
-                        spoofed_data.to_csv('./results/BATADAL/attack_'+str(att_num)+'_replay_max_'+str(i)+'.csv')
-                else:
-                    # 범위를 벗어날 경우 경고 메시지 출력
-                    print(f"Warning: Attack number {att_num} is out of bounds. No data processed for att_num {att_num}.")
-
+                test_data =  pd.read_csv('../../Data/BATADAL/attack_'+str(att_num)+'_from_test_dataset.csv', index_col=['DATETIME'], parse_dates=True)
+                test_data = test_data.drop(columns=['Unnamed: 0'], axis=1)
+                spoofed_data = spoof(spoofing_technique, attack_intervals,
+                                    eavesdropped_data, test_data, att_num, constraints )
                 if constraints_setting == 'topology':
                     spoofed_data.to_csv('./results/BATADAL/constrained_PLC/constrained_'+str(i)+'_attack_'+str(att_num)+'.csv')
                 else:
@@ -235,10 +206,10 @@ if __name__ == "__main__":
                 else:
                     s = open('../Whitebox_Attack/constraints/'+dataset+'/constraint_variables_attack_'+str(att_num)+'.txt', 'r').read()
                 dictionary =  eval(s)
-                constraints = pd.concat([constraints, pd.DataFrame([dictionary[i]])], ignore_index=True)
+                constraints.append(dictionary[i])
                 
                 dictionary =  eval(s)
-                constraints = pd.concat([constraints, pd.DataFrame([dictionary[i]])], ignore_index=True)
+                constraints.append(dictionary[i])
                 print('ATT Num: '+str(att_num))
                 test_data =  pd.read_csv('../../Data/BATADAL/attack_'+str(att_num)+'_from_test_dataset.csv', index_col=['DATETIME'], parse_dates=True)
                 test_data = test_data.drop(columns=['Unnamed: 0'], axis=1)
@@ -256,7 +227,7 @@ if __name__ == "__main__":
                     s = open('../Whitebox_Attack/constraints/'+dataset+'/constraint_variables_attack_'+str(att_num)+'.txt', 'r').read()
                 dictionary =  eval(s)
                 #print(dictionary)
-                constraints = pd.concat([constraints, pd.DataFrame([dictionary[i]])], ignore_index=True)
+                constraints.append(dictionary[i])
                 
                 #print(constraints)
 
